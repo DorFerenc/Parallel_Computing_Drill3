@@ -36,13 +36,9 @@ int main(int argc, char* argv[]) {
    computeHistogramParallelCUDA(localData, (startIndex + (localSize / 2)), localSize, localSize, &localHistogramCUDA);
 
    buildBothHistogramArray(localHistogramOMP, localHistogramCUDA, &localHistogramBOTH);
-   // // Concat both computed histograms
-   // // Calculate the half size of the local array, rounding up if necessary ( +1 )
-   // localHistogramBOTH = concatArrays(localHistogramOMP, (localSize / 2), localHistogramCUDA, ((localSize + 1) / 2));
 
    // Reduce the partial histograms to obtain the final histogram
-   // reduceHistograms(localHistogramOMP, localHistogramCUDA, localSize, &finalHistogram);
-   reduceHistograms(localHistogramBOTH, localSize, &finalHistogram);
+   reduceHistograms(localHistogramBOTH, &finalHistogram, rank);
 
    // Print the final histogram (rank MASTER process)
    if (rank == MASTER) {

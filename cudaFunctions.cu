@@ -27,7 +27,7 @@ void computeHistogramParallelCUDA(int* data, int startIndex, int endIndex, int l
     int* cudaData;
     int* cudaHistogram;
 
-    cudaStatus = cudaMalloc((void**)&cudaData, NUM_BINS * sizeof(int));
+    cudaStatus = cudaMalloc((void**)&cudaData, localSize * sizeof(int));
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "CUDA malloc failed for cudaData: %s\n", cudaGetErrorString(cudaStatus));
         exit(EXIT_FAILURE);
@@ -40,7 +40,7 @@ void computeHistogramParallelCUDA(int* data, int startIndex, int endIndex, int l
     }
 
     // Copy data from host to device (GPU memory)
-    cudaStatus = cudaMemcpy(cudaData, data, cudaDataSize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaStatus = cudaMemcpy(cudaData, data, localSize * sizeof(int), cudaMemcpyHostToDevice);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "CUDA memcpy failed from host to device: %s\n", cudaGetErrorString(cudaStatus));
         exit(EXIT_FAILURE);
@@ -56,7 +56,7 @@ void computeHistogramParallelCUDA(int* data, int startIndex, int endIndex, int l
     }
 
     // Launch kernel for parallel histogram computation
-    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, cudaDataSize, cudaHistogram);
+    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, localSize, cudaHistogram);
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "CUDA kernel launch failed: %s\n", cudaGetErrorString(cudaStatus));

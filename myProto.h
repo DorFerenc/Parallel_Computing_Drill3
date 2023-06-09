@@ -12,12 +12,9 @@
 
 int* generateRandomArray(int size);
 void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int* localSize, int rank, int size);
-void splitForCudaAndOmp(int** ompLocalData, int* ompLocalSize, int** cudaLocalData, int* cudaLocalSize, int* localData, int* localSize, int rank, int size);
-// void computeHistogramParallelOMP(int* data, int dataSize, int** histogram);
 void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** histogram);
 void computeHistogramParallelCUDA(int* data, int startIndex, int endIndex, int localSize, int** histogram);
-// void reduceHistograms(int* localHistogramOMP, int* localHistogramCUDA, int** finalHistogram, int rank);
 void buildBothHistogramArray(int* ompArray, int* cudaArray, int** bothArray);
 void reduceHistograms(int* localHistogram, int** finalHistogram, int rank);
-int* concatArrays(int* array1, int size1, int* array2, int size2);
 void printHistogram(int* histogram, int size);
+void test(int *hist, int n);
