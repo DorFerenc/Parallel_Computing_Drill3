@@ -14,7 +14,7 @@ __global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
     }
 }
 
-void computeHistogramParallel(int* data, int dataSize, int** histogram) {
+void computeHistogramParallelCUDA(int* data, int dataSize, int** histogram) {
     int* cudaData;
     int* cudaHistogram;
 

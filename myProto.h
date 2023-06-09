@@ -12,6 +12,8 @@
 
 int* generateRandomArray(int size);
 void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int* localSize, int rank, int size);
-void computeHistogramParallel(int* data, int dataSize, int** histogram);
+void splitForCudaAndOmp(int** ompLocalData, int* ompLocalSize, int** cudaLocalData, int* cudaLocalSize, int* localData, int* localSize, int rank, int size);
+void computeHistogramParallelOMP(int* data, int dataSize, int** histogram);
+void computeHistogramParallelCUDA(int* data, int dataSize, int** histogram);
 void reduceHistograms(int* localHistogram, int localSize, int** finalHistogram);
 void printHistogram(int* histogram, int size);

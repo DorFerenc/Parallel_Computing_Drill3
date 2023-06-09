@@ -42,7 +42,7 @@ void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int*
     int quotient = dataSize / 2;
     int remainder = dataSize % 2;
     *localSize = quotient;
-    if (rank < remainder) {
+    if (rank < remainder) { // if doesnt divide in 2 give extra to master
         (*localSize)++;
     }
 
@@ -65,8 +65,50 @@ void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int*
     }
 }
 
+/**
+ * Splits the local data array into separate arrays for OpenMP and CUDA computations.
+ * 
+ * @param ompLocalData Pointer to the array to store the data for OpenMP computation.
+ * @param ompLocalSize Pointer to the variable to store the size of the OpenMP data array.
+ * @param cudaLocalData Pointer to the array to store the data for CUDA computation.
+ * @param cudaLocalSize Pointer to the variable to store the size of the CUDA data array.
+ * @param localData Pointer to the original local data array.
+ * @param localSize Pointer to the variable storing the size of the local data array.
+ * @param rank Rank of the current process.
+ * @param size Total number of processes.
+ */
+void splitForCudaAndOmp(int** ompLocalData, int* ompLocalSize, int** cudaLocalData, int* cudaLocalSize, int* localData, int* localSize, int rank, int size) {
+    // Calculate the size of the local data array
+    int quotient = *localSize / 2;
+    int remainder = *localSize % 2;
+    *ompLocalSize = quotient;
+    if (remainder > 0) { // if doesnt divide in 2 give extra to omp
+        (*ompLocalSize)++;
+    }
+    *cudaLocalSize = *localSize - *ompLocalSize;
 
-void computeHistogramParallel(int* data, int dataSize, int** histogram) 
+    // Allocate memory for the arrays
+    *ompLocalData = (int*)malloc(*ompLocalSize * sizeof(int));
+    *cudaLocalData = (int*)malloc(*cudaLocalSize * sizeof(int));
+
+    // Check for successful memory allocation
+    if (*ompLocalData == NULL || *cudaLocalData == NULL) {
+        printf("Memory allocation failed for ompLocalData or cudaLocalData.\n");
+        exit(1);
+    }
+
+    // Split the local data into ompLocalData and cudaLocalData
+    int splitIndex = *ompLocalSize;
+
+    // Copy data for OpenMP computation
+    memcpy(*ompLocalData, localData, splitIndex * sizeof(int));
+
+    // Copy data for CUDA computation
+    memcpy(*cudaLocalData, localData + splitIndex, (*cudaLocalSize) * sizeof(int));
+}
+
+
+void computeHistogramParallelOMP(int* data, int dataSize, int** histogram) 
 {
     int rank;
 
