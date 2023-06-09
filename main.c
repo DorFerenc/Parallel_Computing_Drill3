@@ -10,7 +10,8 @@ int main(int argc, char* argv[]) {
    int* dataArray;
    int* localData;
    int localSize;
-   int* localHistogram;
+   int* localHistogramOMP;
+   int* localHistogramCUDA;
    int* finalHistogram;
 
    MPI_Init(&argc, &argv);
@@ -27,7 +28,8 @@ int main(int argc, char* argv[]) {
    sendAndReceiveDataArray(dataArray, DATASIZE, &localData, &localSize, rank, size);
 
    // Perform parallel processing using OpenMP and CUDA
-   computeHistogramParallel(localData, localSize, &localHistogram);
+   computeHistogramParallelOMP(localData, localSize, &localHistogramOMP);
+   computeHistogramParallelCUDA(localData, localSize, &localHistogramCUDA);
 
    // Reduce the partial histograms to obtain the final histogram
    reduceHistograms(localHistogram, localSize, &finalHistogram);

@@ -94,7 +94,7 @@ void splitForCudaAndOmp(int** ompLocalData, int* ompLocalSize, int** cudaLocalDa
     // Check for successful memory allocation
     if (*ompLocalData == NULL || *cudaLocalData == NULL) {
         printf("Memory allocation failed for ompLocalData or cudaLocalData.\n");
-        exit(1);
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
     // Split the local data into ompLocalData and cudaLocalData
@@ -110,18 +110,20 @@ void splitForCudaAndOmp(int** ompLocalData, int* ompLocalSize, int** cudaLocalDa
 
 void computeHistogramParallelOMP(int* data, int dataSize, int** histogram) 
 {
-    int rank;
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
+    int halfSize = dataSize / 2;
 
     // Allocate memory for the local histogram
     *histogram = (int*)calloc(NUM_BINS, sizeof(int));
+    if (*histogram == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for histogram.\n");
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
 
     // Perform OpenMP parallel processing on the local data array
     #pragma omp parallel for
-    for (int i = 0; i < dataSize; i++) 
+    for (int i = 0; i < halfSize; i++) // omp runs from 0 to halfSize, cuda from halfSize to dataSize
     {
-        #pragma omp atomic
         (*histogram)[data[i]]++;
     }
 }
