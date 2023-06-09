@@ -27,6 +27,45 @@ int* generateRandomArray(int size) {
 }
 
 
+// /**
+//  * Sends and receives data array between processes.
+//  *
+//  * @param dataArray The original data array.
+//  * @param dataSize The size of the original data array.
+//  * @param localData The local data array to be allocated and filled.
+//  * @param localSize The size of the local data array.
+//  * @param rank The rank of the current process.
+//  * @param size The total number of processes.
+//  */
+// void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int* localSize, int rank, int size) 
+// {
+//     MPI_Status  status;
+//     // Calculate the size of the local data array
+//     if (rank ==  MASTER) // if doesnt divide in 2 give extra to master
+//         (*localSize) = (DATASIZE + 1) / 2;
+//     else
+//         (*localSize) = DATASIZE / 2;
+   
+//     // Allocate memory for the local data array
+//     *localData = (int*)malloc(*localSize * sizeof(int));
+//     if (*localData == NULL) {
+//         fprintf(stderr, "Error: Failed to allocate memory for localData.\n");
+//         MPI_Abort(MPI_COMM_WORLD, 1);
+//     }
+//     if (rank == MASTER) 
+//     {
+//         // Send the first half of the data array to the other process
+//         // MPI_Send(dataArray+(localSize), (DATASIZE / 2), MPI_INT, OTHER_RANK, MY_TAG, MPI_COMM_WORLD);
+//         MPI_Send(&dataArray+((DATASIZE + 1) / 2), (DATASIZE / 2), MPI_INT, OTHER_RANK, MY_TAG, MPI_COMM_WORLD);
+//     } 
+//     else 
+//     {
+//         // Receive the first half of the data array from the master process
+//         // MPI_Recv(localData, localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
+//         MPI_Recv(*localData, *localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
+//     }
+// }
+
 /**
  * Sends and receives data array between processes.
  *
@@ -39,36 +78,36 @@ int* generateRandomArray(int size) {
  */
 void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int* localSize, int rank, int size) 
 {
-    MPI_Status  status;
+    MPI_Status status;
+
     // Calculate the size of the local data array
-    int quotient = dataSize / 2;
-    int remainder = dataSize % 2;
-    *localSize = quotient;
-    if (rank < remainder) { // if doesnt divide in 2 give extra to master
-        (*localSize)++;
-    }
+    if (rank == MASTER)
+        (*localSize) = (DATASIZE + 1) / 2;
+    else
+        (*localSize) = DATASIZE / 2;
+
     // Allocate memory for the local data array
-    *localData = (int*)malloc(*localSize * sizeof(int));
+    *localData = (int*)malloc((*localSize) * sizeof(int));
     if (*localData == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for localData.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    if (rank == MASTER) 
-    {
+
+    if (rank == MASTER) {
         // Send the first half of the data array to the other process
-        MPI_Send(&dataArray+(*localSize), *localSize, MPI_INT, OTHER_RANK, MY_TAG, MPI_COMM_WORLD);
-    } 
-    else 
-    {
+        MPI_Send(dataArray + ((*localSize)), DATASIZE / 2, MPI_INT, OTHER_RANK, MY_TAG, MPI_COMM_WORLD);
+    } else {
         // Receive the first half of the data array from the master process
-        MPI_Recv(*localData, *localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
+        MPI_Recv(*localData, (*localSize), MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
     }
 }
 
 
+
 void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** histogram) 
 {
-    printf("\nstart:%d, end:%d\n", startIndex, endIndex);
+    printf("\nOOMMPP start:%d, end:%d\n", startIndex, endIndex);
+    printf("\nOOMMPP NEW start:0, end:%d\n", (endIndex - startIndex));
     // Allocate memory for the local histograsm
     *histogram = (int*)calloc(NUM_BINS, sizeof(int));
     if (*histogram == NULL) {
@@ -129,7 +168,7 @@ void reduceHistograms(int* localHistogram, int** finalHistogram, int rank)
     }
 
     // Reduce the local histogram to the final histogram on rank 0
-    MPI_Reduce(localHistogram, *finalHistogram, NUM_BINS, MPI_INT, MPI_SUM, MASTER, MPI_COMM_WORLD);
+    // MPI_Reduce(localHistogram, *finalHistogram, NUM_BINS, MPI_INT, MPI_SUM, MASTER, MPI_COMM_WORLD);
 }
 
 

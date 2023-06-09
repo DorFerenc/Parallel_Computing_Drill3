@@ -4,12 +4,21 @@
 #include <stdio.h>
 
 
-__global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
+// __global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
+//     int tid = blockIdx.x * blockDim.x + threadIdx.x;
+//     // int chunck = (dataSize / (NUM_BLOCKS * THREADS_PER_BLOCK));
+//     int stride = gridDim.x * blockDim.x;
+
+//     for (int i = tid; i < dataSize; i += stride) {
+//         atomicAdd(&histogram[data[i]], 1);
+//     }
+// }
+
+__global__ void computeHistogramCUDA(int* data, int startIndex, int endIndex, int* histogram) {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    // int chunck = (dataSize / (NUM_BLOCKS * THREADS_PER_BLOCK));
     int stride = gridDim.x * blockDim.x;
 
-    for (int i = tid; i < dataSize; i += stride) {
+    for (int i = tid + startIndex; i < endIndex; i += stride) {
         atomicAdd(&histogram[data[i]], 1);
     }
 }
@@ -41,7 +50,11 @@ __global__  void initHist(int* h) {
 
 void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** histogram) {
 
-    printf("\nstart:%d, end:%d\n", startIndex, endIndex);
+    printf("\nCCUUDDAA start:%d, end:%d\n", startIndex, endIndex);
+    int temp = startIndex;
+    startIndex = endIndex - startIndex;
+    endIndex = localSize;
+    printf("\nCCUUDDAA NEW start:%d, end:%d\n", startIndex, endIndex);
     //  // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
     // int cudaDataSize  = dataSize / 2;
     // int remainder = dataSize % 2;
@@ -87,7 +100,8 @@ void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** 
     // }
 
     // Launch kernel for parallel histogram computation
-    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, localSize, cudaHistogram);
+    // computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, localSize, cudaHistogram);
+    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, startIndex, endIndex, cudaHistogram);
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "CUDA kernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
