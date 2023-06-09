@@ -1,62 +1,41 @@
 #include <cuda_runtime.h>
 #include <helper_cuda.h>
 #include "myProto.h"
+#include <stdio.h>
 
-__global__  void incrementByOne(int *arr, int numElements) {
-    int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-    // Increment the proper value of the arrray according to thread ID 
-    if (i < numElements)
-        arr[i]++;
+__global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    int stride = blockDim.x * gridDim.x;
+
+    while (tid < dataSize) {
+        atomicAdd(&histogram[data[tid]], 1);
+        tid += stride;
+    }
 }
 
+void computeHistogramParallel(int* data, int dataSize, int** histogram) {
+    int* cudaData;
+    int* cudaHistogram;
 
-int computeOnGPU(int *data, int numElements) {
-    // Error code to check return values for CUDA calls
-    cudaError_t err = cudaSuccess;
+    // Allocate device memory for data and histogram
+    cudaMalloc((void**)&cudaData, dataSize * sizeof(int));
+    cudaMalloc((void**)&cudaHistogram, NUM_BINS * sizeof(int));
 
-    size_t size = numElements * sizeof(float);
-  
+    // Copy data from host to device
+    cudaMemcpy(cudaData, data, dataSize * sizeof(int), cudaMemcpyHostToDevice);
 
-    // Allocate memory on GPU to copy the data from the host
-    int *d_A;
-    err = cudaMalloc((void **)&d_A, size);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to allocate device memory - %s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+    // Initialize histogram on device memory
+    cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
 
-    // Copy data from host to the GPU memory
-    err = cudaMemcpy(d_A, data, size, cudaMemcpyHostToDevice);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to copy data from host to device - %s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+    // Launch kernel for parallel histogram computation
+    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, dataSize, cudaHistogram);
 
+    // Copy histogram result from device to host
+    *histogram = (int*)malloc(NUM_BINS * sizeof(int));
+    cudaMemcpy(*histogram, cudaHistogram, NUM_BINS * sizeof(int), cudaMemcpyDeviceToHost);
 
-    // Launch the Kernel
-    int threadsPerBlock = 256;
-    int blocksPerGrid =(numElements + threadsPerBlock - 1) / threadsPerBlock;
-    incrementByOne<<<blocksPerGrid, threadsPerBlock>>>(d_A, numElements);
-    err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to launch vectorAdd kernel -  %s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Copy the  result from GPU to the host memory.
-    err = cudaMemcpy(data, d_A, size, cudaMemcpyDeviceToHost);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Failed to copy result array from device to host -%s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    // Free allocated memory on GPU
-    if (cudaFree(d_A) != cudaSuccess) {
-        fprintf(stderr, "Failed to free device data - %s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
-
-    return 0;
+    // Clean up device memory
+    cudaFree(cudaData);
+    cudaFree(cudaHistogram);
 }
-

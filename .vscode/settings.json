@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "myproto.h": "c",
+        "mpi.h": "c"
+    }
+}
