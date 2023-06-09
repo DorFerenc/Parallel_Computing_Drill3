@@ -7,7 +7,7 @@
 // // #include <cstring>
 // #include <string.h>
 
-#define DATASIZE 1000000
+#define DATASIZE 101 //1000000
 #define NUM_BINS 256
 #define MASTER 0
 #define OTHER_RANK 1

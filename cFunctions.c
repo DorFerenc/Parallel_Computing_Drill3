@@ -106,8 +106,7 @@ void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int*
 
 void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** histogram) 
 {
-    printf("\nOOMMPP start:%d, end:%d\n", startIndex, endIndex);
-    printf("\nOOMMPP NEW start:0, end:%d\n", (endIndex - startIndex));
+    printf("\nOOMMPP OLD start:%d NEW Start:%d, OLD end:%d NEW END:%d\n", startIndex, 0, endIndex, (endIndex - startIndex));
     // Allocate memory for the local histograsm
     *histogram = (int*)calloc(NUM_BINS, sizeof(int));
     if (*histogram == NULL) {
@@ -116,13 +115,11 @@ void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** 
     }
 
     // Perform OpenMP parallel processing on the local data array
-
-        #pragma omp parallel for
+    #pragma omp parallel for
         for (int i = 0; i < (endIndex - startIndex); i++) // omp runs from 0 to halfSize, cuda from halfSize to dataSize
         {
             (*histogram)[data[i]]++;
         }
-    
 }
 
 

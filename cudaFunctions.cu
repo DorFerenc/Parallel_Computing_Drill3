@@ -50,11 +50,11 @@ __global__  void initHist(int* h) {
 
 void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** histogram) {
 
-    printf("\nCCUUDDAA start:%d, end:%d\n", startIndex, endIndex);
+    printf("\nCCUUDDAA start:%d, NEW START:%d, end:%d NEW END:%d\n", startIndex, (endIndex - startIndex) + (localSize % 2), endIndex, localSize);
     int temp = startIndex;
-    startIndex = endIndex - startIndex;
+    startIndex = endIndex - startIndex + (localSize % 2);
     endIndex = localSize;
-    printf("\nCCUUDDAA NEW start:%d, end:%d\n", startIndex, endIndex);
+    // printf("\nCCUUDDAA NEW start:%d, end:%d\n", startIndex, endIndex);
     //  // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
     // int cudaDataSize  = dataSize / 2;
     // int remainder = dataSize % 2;

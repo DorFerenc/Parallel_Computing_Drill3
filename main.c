@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
    // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
    // Perform parallel processing using OpenMP and CUDA
    int startIndex = rank * (localSize + (DATASIZE % 2));
-   int endIndex = rank * localSize + ((localSize + 1) / 2);
+   int endIndex = rank * localSize + (localSize / 2 + (DATASIZE % 2)); //localSize + ((localSize + 1) / 2);
    computeHistogramParallelOMP(localData, startIndex, endIndex, &localHistogramOMP);
    printf("Done OMP: %d\n", rank);
    computeOnGPU(localData, endIndex, ((localSize + (DATASIZE % 2)) * rank) + localSize, localSize, &localHistogramCUDA);
@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
    if (rank == MASTER) {
       // test and print the results
       test(finalHistogram, NUM_BINS, rank, 4);
-      printHistogram(finalHistogram, NUM_BINS);
+      // printHistogram(finalHistogram, NUM_BINS);
    }
 
    // Clean up
