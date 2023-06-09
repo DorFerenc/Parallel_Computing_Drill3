@@ -1,6 +1,12 @@
 {
     "files.associations": {
         "myproto.h": "c",
-        "mpi.h": "c"
+        "mpi.h": "c",
+        "array": "c",
+        "omp.h": "c",
+        "type_traits": "c",
+        "string.h": "c",
+        "string": "c",
+        "string_view": "c"
     }
 }

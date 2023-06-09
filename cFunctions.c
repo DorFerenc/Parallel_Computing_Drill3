@@ -39,6 +39,7 @@ int* generateRandomArray(int size) {
  */
 void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int* localSize, int rank, int size) 
 {
+    MPI_Status  status;
     // Calculate the size of the local data array
     int quotient = dataSize / 2;
     int remainder = dataSize % 2;
@@ -46,14 +47,12 @@ void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int*
     if (rank < remainder) { // if doesnt divide in 2 give extra to master
         (*localSize)++;
     }
-
     // Allocate memory for the local data array
     *localData = (int*)malloc(*localSize * sizeof(int));
     if (*localData == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for localData.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-
     if (rank == MASTER) 
     {
         // Send the first half of the data array to the other process
@@ -62,13 +61,14 @@ void sendAndReceiveDataArray(int* dataArray, int dataSize, int** localData, int*
     else 
     {
         // Receive the first half of the data array from the master process
-        MPI_Recv(*localData, *localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(*localData, *localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
     }
 }
 
 
 void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** histogram) 
 {
+    printf("\nstart:%d, end:%d\n", startIndex, endIndex);
     // Allocate memory for the local histograsm
     *histogram = (int*)calloc(NUM_BINS, sizeof(int));
     if (*histogram == NULL) {
@@ -77,11 +77,13 @@ void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** 
     }
 
     // Perform OpenMP parallel processing on the local data array
-    #pragma omp parallel for
-    for (int i = startIndex; i < endIndex; i++) // omp runs from 0 to halfSize, cuda from halfSize to dataSize
-    {
-        (*histogram)[data[i]]++;
-    }
+
+        #pragma omp parallel for
+        for (int i = 0; i < (endIndex - startIndex); i++) // omp runs from 0 to halfSize, cuda from halfSize to dataSize
+        {
+            (*histogram)[data[i]]++;
+        }
+    
 }
 
 
@@ -94,8 +96,9 @@ void buildBothHistogramArray(int* ompArray, int* cudaArray, int** bothArray) {
     }
     // Add the OMP results to the temporary histogram
     for (int i = 0; i < NUM_BINS; i++) {
-        bothArray[i] += ompArray[i];
-        bothArray[i] += cudaArray[i];
+        (*bothArray)[i] += ompArray[i];
+        (*bothArray)[i] += cudaArray[i];
+        // printf("bothArray[%d]: %d\n",i, *bothArray[i]);
     }
 }
 
@@ -110,10 +113,19 @@ void buildBothHistogramArray(int* ompArray, int* cudaArray, int** bothArray) {
  */
 void reduceHistograms(int* localHistogram, int** finalHistogram, int rank)
 {
+    MPI_Status  status;
+
     // Allocate memory for the final histogram on rank 0
     if (rank == MASTER) 
     {
-        *finalHistogram = (int*)calloc(NUM_BINS, sizeof(int));
+        int tempArray[NUM_BINS];
+        MPI_Recv(tempArray, NUM_BINS, MPI_INT, OTHER_RANK, MY_TAG, MPI_COMM_WORLD, &status);
+        buildBothHistogramArray(localHistogram, tempArray, finalHistogram);
+        // *finalHistogram = (int*)calloc(NUM_BINS, sizeof(int));
+
+    }
+    else {
+        MPI_Send(localHistogram, NUM_BINS, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD);
     }
 
     // Reduce the local histogram to the final histogram on rank 0
@@ -132,15 +144,15 @@ void printHistogram(int* histogram, int size)
 
 
 // test if the total numbers in the hist queal to NUM_OF_ELEMENTS
-void test(int *hist, int n) {
+void test(int *hist, int n, int rank, int type) {
     int i;
     int sum = 0;
     for (i = 0;   i < n;   i++) {
         sum += hist[i];
     }
     if(sum == DATASIZE)
-        printf("\nThe test passed successfully\n"); 
+        printf("\nRank:%d The test type:%d passed successfully %d\n", rank, type, sum); 
     else
-        printf("\nThe test Failed %d\n", sum); 
+        printf("\nRank:%d The test type:%d Failed %d\n", rank, type, sum); 
 
 }
