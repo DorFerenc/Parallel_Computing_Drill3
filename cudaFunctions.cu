@@ -14,20 +14,20 @@ __global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
     }
 }
 
-void computeHistogramParallelCUDA(int* data, int dataSize, int** histogram) {
-     // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
-    int cudaDataSize  = dataSize / 2;
-    int remainder = dataSize % 2;
-    if (remainder > 0) { // if doesnt divide in 2 give extra to cuda
-        cudaDataSize ++;
-    }
+void computeHistogramParallelCUDA(int* data, int startIndex, int endIndex, int localSize, int** histogram) {
+    //  // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
+    // int cudaDataSize  = dataSize / 2;
+    // int remainder = dataSize % 2;
+    // if (remainder > 0) { // if doesnt divide in 2 give extra to cuda
+    //     cudaDataSize ++;
+    // }
 
      // Allocate device memory on GPU for CUDA data and histogram from Host (CPU)
     cudaError_t cudaStatus;
     int* cudaData;
     int* cudaHistogram;
 
-    cudaStatus = cudaMalloc((void**)&cudaData, cudaDataSize * sizeof(int));
+    cudaStatus = cudaMalloc((void**)&cudaData, NUM_BINS * sizeof(int));
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "CUDA malloc failed for cudaData: %s\n", cudaGetErrorString(cudaStatus));
         exit(EXIT_FAILURE);
@@ -73,7 +73,7 @@ void computeHistogramParallelCUDA(int* data, int dataSize, int** histogram) {
 
     // Clean up device memory
     if (cudaFree(cudaData) != cudaSuccess || cudaFree(cudaHistogram) != cudaSuccess) {
-        fprintf(stderr, "Failed to free device data - %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to free device data - %s\n", cudaGetErrorString(cudaStatus));
         exit(EXIT_FAILURE);
     }
 

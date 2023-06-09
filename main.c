@@ -12,7 +12,9 @@ int main(int argc, char* argv[]) {
    int localSize;
    int* localHistogramOMP;
    int* localHistogramCUDA;
+   int* localHistogramBOTH;
    int* finalHistogram;
+
 
    MPI_Init(&argc, &argv);
    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -27,12 +29,20 @@ int main(int argc, char* argv[]) {
    // Distribute the data array to all processes
    sendAndReceiveDataArray(dataArray, DATASIZE, &localData, &localSize, rank, size);
 
+   // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
    // Perform parallel processing using OpenMP and CUDA
-   computeHistogramParallelOMP(localData, localSize, &localHistogramOMP);
-   computeHistogramParallelCUDA(localData, localSize, &localHistogramCUDA);
+   int startIndex = rank * localSize;
+   computeHistogramParallelOMP(localData, startIndex, (localSize / 2), &localHistogramOMP);
+   computeHistogramParallelCUDA(localData, (startIndex + (localSize / 2)), localSize, localSize, &localHistogramCUDA);
+
+   buildBothHistogramArray(localHistogramOMP, localHistogramCUDA, &localHistogramBOTH);
+   // // Concat both computed histograms
+   // // Calculate the half size of the local array, rounding up if necessary ( +1 )
+   // localHistogramBOTH = concatArrays(localHistogramOMP, (localSize / 2), localHistogramCUDA, ((localSize + 1) / 2));
 
    // Reduce the partial histograms to obtain the final histogram
-   reduceHistograms(localHistogramOMP, localHistogramCUDA, localSize, &finalHistogram);
+   // reduceHistograms(localHistogramOMP, localHistogramCUDA, localSize, &finalHistogram);
+   reduceHistograms(localHistogramBOTH, localSize, &finalHistogram);
 
    // Print the final histogram (rank MASTER process)
    if (rank == MASTER) {
@@ -44,6 +54,7 @@ int main(int argc, char* argv[]) {
    free(localData);
    free(localHistogramOMP);
    free(localHistogramCUDA);
+   free(localHistogramBOTH);
    free(finalHistogram);
 
    MPI_Finalize();
