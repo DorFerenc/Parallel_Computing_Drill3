@@ -128,21 +128,19 @@ void computeHistogramParallelOMP(int* data, int dataSize, int** histogram)
     }
 }
 
-void reduceHistograms(int* localHistogram, int localSize, int** finalHistogram) 
+void reduceHistograms(int* localHistogramOMP, int* localHistogramCUDA, int** finalHistogram, int rank)
 {
-    int rank, size;
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
     // Allocate memory for the final histogram on rank 0
     if (rank == MASTER) 
     {
         *finalHistogram = (int*)calloc(NUM_BINS, sizeof(int));
     }
 
-    // Reduce the local histograms to the final histogram on rank 0
-    MPI_Reduce(localHistogram, *finalHistogram, NUM_BINS, MPI_INT, MPI_SUM, MASTER, MPI_COMM_WORLD);
+     // Reduce the local OMP histogram to the final histogram on rank 0
+    MPI_Reduce(localHistogramOMP, *finalHistogram, NUM_BINS, MPI_INT, MPI_SUM, MASTER, MPI_COMM_WORLD);
+
+    // Reduce the local CUDA histogram to the final histogram on rank 0
+    MPI_Reduce(localHistogramCUDA, *finalHistogram, NUM_BINS, MPI_INT, MPI_SUM, MASTER, MPI_COMM_WORLD);
 }
 
 void printHistogram(int* histogram, int size) 

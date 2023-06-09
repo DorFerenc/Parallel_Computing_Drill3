@@ -15,27 +15,87 @@ __global__ void computeHistogramCUDA(int* data, int dataSize, int* histogram) {
 }
 
 void computeHistogramParallelCUDA(int* data, int dataSize, int** histogram) {
+     // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
+    int cudaDataSize  = dataSize / 2;
+    int remainder = dataSize % 2;
+    if (remainder > 0) { // if doesnt divide in 2 give extra to cuda
+        cudaDataSize ++;
+    }
+
+     // Allocate device memory on GPU for CUDA data and histogram from Host (CPU)
+    cudaError_t cudaStatus;
     int* cudaData;
     int* cudaHistogram;
 
-    // Allocate device memory for data and histogram
-    cudaMalloc((void**)&cudaData, dataSize * sizeof(int));
-    cudaMalloc((void**)&cudaHistogram, NUM_BINS * sizeof(int));
+    cudaStatus = cudaMalloc((void**)&cudaData, cudaDataSize * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA malloc failed for cudaData: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
 
-    // Copy data from host to device
-    cudaMemcpy(cudaData, data, dataSize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaStatus = cudaMalloc((void**)&cudaHistogram, NUM_BINS * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA malloc failed for cudaHistogram: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
 
-    // Initialize histogram on device memory
-    cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
+    // Copy data from host to device (GPU memory)
+    cudaStatus = cudaMemcpy(cudaData, data, cudaDataSize * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA memcpy failed from host to device: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
+
+    //TODO Initialize arrays on device initHist <<< 1 , RANGE >>> (d_h);
+
+    // Initialize histogram on device memory 
+    cudaStatus = cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA memset failed for cudaHistogram: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
 
     // Launch kernel for parallel histogram computation
-    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, dataSize, cudaHistogram);
+    computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, cudaDataSize, cudaHistogram);
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
 
-    // Copy histogram result from device to host
+    // Copy histogram result from device (GPU) to host (CPU)
     *histogram = (int*)malloc(NUM_BINS * sizeof(int));
-    cudaMemcpy(*histogram, cudaHistogram, NUM_BINS * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaStatus = cudaMemcpy(*histogram, cudaHistogram, NUM_BINS * sizeof(int), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "CUDA memcpy failed from device to host: %s\n", cudaGetErrorString(cudaStatus));
+        exit(EXIT_FAILURE);
+    }
 
     // Clean up device memory
-    cudaFree(cudaData);
-    cudaFree(cudaHistogram);
+    if (cudaFree(cudaData) != cudaSuccess || cudaFree(cudaHistogram) != cudaSuccess) {
+        fprintf(stderr, "Failed to free device data - %s\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+
+    // // Allocate device memory for data and histogram
+    // cudaMalloc((void**)&cudaData, halfSize * sizeof(int));
+    // cudaMalloc((void**)&cudaHistogram, NUM_BINS * sizeof(int));
+
+    // // Copy data from host to device
+    // cudaMemcpy(cudaData, data, halfSize * sizeof(int), cudaMemcpyHostToDevice);
+
+    // // Initialize histogram on device memory
+    // cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
+
+    // // Launch kernel for parallel histogram computation
+    // computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, dataSize, cudaHistogram);
+
+    // // Copy histogram result from device to host
+    // *histogram = (int*)malloc(NUM_BINS * sizeof(int));
+    // cudaMemcpy(*histogram, cudaHistogram, NUM_BINS * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // // Clean up device memory
+    // cudaFree(cudaData);
+    // cudaFree(cudaHistogram);
 }

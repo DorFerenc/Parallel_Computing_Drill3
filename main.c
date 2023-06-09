@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
    computeHistogramParallelCUDA(localData, localSize, &localHistogramCUDA);
 
    // Reduce the partial histograms to obtain the final histogram
-   reduceHistograms(localHistogram, localSize, &finalHistogram);
+   reduceHistograms(localHistogramOMP, localHistogramCUDA, localSize, &finalHistogram);
 
    // Print the final histogram (rank MASTER process)
    if (rank == MASTER) {
@@ -42,7 +42,8 @@ int main(int argc, char* argv[]) {
    // Clean up
    free(dataArray);
    free(localData);
-   free(localHistogram);
+   free(localHistogramOMP);
+   free(localHistogramCUDA);
    free(finalHistogram);
 
    MPI_Finalize();
