@@ -23,24 +23,6 @@ __global__ void computeHistogramCUDA(int* data, int startIndex, int endIndex, in
     }
 }
 
-    // for (int i = tid * chunck; i < tid * chunck + chunck; i++) {
-    //     atomicAdd(&histogram[data[i]], 1);
-    // }
-    // while (tid < dataSize) {
-    //     atomicAdd(&histogram[data[tid]], 1);
-    //     tid += chunck;
-    // }
-// }
-
-// __global__  void buildHist(int *h, int *temp) {
-//     int index = threadIdx.x;
-    
-
-//     for (int i=0; i < NUM_BLOCKS; i++)
-//         for(int j=0; j< THREADS_PER_BLOCK; j++)
-//             h[index] += temp[index + (j * NUM_BINS) + (NUM_BINS * THREADS_PER_BLOCK * i)];
-// }
-
 __global__  void initHist(int* h) {
 
   int index = threadIdx.x;
@@ -51,16 +33,8 @@ __global__  void initHist(int* h) {
 void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** histogram) {
 
     printf("\nCCUUDDAA start:%d, NEW START:%d, end:%d NEW END:%d\n", startIndex, (endIndex - startIndex) + (localSize % 2), endIndex, localSize);
-    int temp = startIndex;
     startIndex = endIndex - startIndex + (localSize % 2);
     endIndex = localSize;
-    // printf("\nCCUUDDAA NEW start:%d, end:%d\n", startIndex, endIndex);
-    //  // Split the data into two halves for omp take the smaller half if there is a reminder (bigger will be in cuda)
-    // int cudaDataSize  = dataSize / 2;
-    // int remainder = dataSize % 2;
-    // if (remainder > 0) { // if doesnt divide in 2 give extra to cuda
-    //     cudaDataSize ++;
-    // }
 
      // Allocate device memory on GPU for CUDA data and histogram from Host (CPU)
     cudaError_t cudaStatus;
@@ -93,11 +67,6 @@ void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** 
         fprintf(stderr, "CUDA memset failed for cudaHistogram: %s\n", cudaGetErrorString(cudaStatus));
         exit(EXIT_FAILURE);
     }
-    // cudaStatus = cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
-    // if (cudaStatus != cudaSuccess) {
-    //     fprintf(stderr, "CUDA memset failed for cudaHistogram: %s\n", cudaGetErrorString(cudaStatus));
-    //     exit(EXIT_FAILURE);
-    // }
 
     // Launch kernel for parallel histogram computation
     // computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, localSize, cudaHistogram);
@@ -108,9 +77,8 @@ void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** 
         exit(EXIT_FAILURE);
     }
 
-
-    // Synchronize to ensure all CUDA operations are completed
-    cudaDeviceSynchronize();
+    // // Synchronize to ensure all CUDA operations are completed
+    // cudaDeviceSynchronize();
 
 
     // Copy histogram result from device (GPU) to host (CPU)
@@ -127,35 +95,4 @@ void computeOnGPU(int* data, int startIndex, int endIndex, int localSize, int** 
         exit(EXIT_FAILURE);
     }
 
-
-    int result = 0;
-    for (int i = 0;  i < NUM_BINS;   i++)
-        result += (*histogram)[i];
-    if (result == DATASIZE / 4)
-        printf("Test PASSED\n");
-    else
-        printf("Test FAILED!!!!! %d\n", result);
-
-    printf("Done Cuda\n");
-
-    // // Allocate device memory for data and histogram
-    // cudaMalloc((void**)&cudaData, halfSize * sizeof(int));
-    // cudaMalloc((void**)&cudaHistogram, NUM_BINS * sizeof(int));
-
-    // // Copy data from host to device
-    // cudaMemcpy(cudaData, data, halfSize * sizeof(int), cudaMemcpyHostToDevice);
-
-    // // Initialize histogram on device memory
-    // cudaMemset(cudaHistogram, 0, NUM_BINS * sizeof(int));
-
-    // // Launch kernel for parallel histogram computation
-    // computeHistogramCUDA<<<NUM_BLOCKS, THREADS_PER_BLOCK>>>(cudaData, dataSize, cudaHistogram);
-
-    // // Copy histogram result from device to host
-    // *histogram = (int*)malloc(NUM_BINS * sizeof(int));
-    // cudaMemcpy(*histogram, cudaHistogram, NUM_BINS * sizeof(int), cudaMemcpyDeviceToHost);
-
-    // // Clean up device memory
-    // cudaFree(cudaData);
-    // cudaFree(cudaHistogram);
 }

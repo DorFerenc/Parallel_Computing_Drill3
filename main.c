@@ -50,7 +50,6 @@ int main(int argc, char* argv[]) {
       MPI_Recv(localData, localSize, MPI_INT, MASTER, MY_TAG, MPI_COMM_WORLD, &status);
 
 
-
    // // Distribute the data array to all processes
    // sendAndReceiveDataArray(dataArray, DATASIZE, &localData, &localSize, rank, size);
 
@@ -59,18 +58,12 @@ int main(int argc, char* argv[]) {
    int startIndex = rank * (localSize + (DATASIZE % 2));
    int endIndex = rank * localSize + (localSize / 2 + (DATASIZE % 2)); //localSize + ((localSize + 1) / 2);
    computeHistogramParallelOMP(localData, startIndex, endIndex, &localHistogramOMP);
-   printf("Done OMP: %d\n", rank);
    computeOnGPU(localData, endIndex, ((localSize + (DATASIZE % 2)) * rank) + localSize, localSize, &localHistogramCUDA);
-   printf("Done CUDA22: %d\n", rank);
 
-      test(localHistogramOMP, NUM_BINS, rank, 0);
-      test(localHistogramCUDA, NUM_BINS, rank, 1);
+   test(localHistogramOMP, NUM_BINS, rank, 0);
+   test(localHistogramCUDA, NUM_BINS, rank, 1);
 
    buildBothHistogramArray(localHistogramOMP, localHistogramCUDA, &localHistogramBOTH);
-   printf("Done BOTH: %d\n", rank);  
-   // if (rank == MASTER)
-   //    test(localHistogramBOTH, NUM_BINS, rank, 3);
-   //    printHistogram(localHistogramBOTH, NUM_BINS);
    // Reduce the partial histograms to obtain the final histogram
    reduceHistograms(localHistogramBOTH, &finalHistogram, rank);
 
@@ -78,7 +71,7 @@ int main(int argc, char* argv[]) {
    if (rank == MASTER) {
       // test and print the results
       test(finalHistogram, NUM_BINS, rank, 4);
-      // printHistogram(finalHistogram, NUM_BINS);
+      printHistogram(finalHistogram, NUM_BINS);
    }
 
    // Clean up

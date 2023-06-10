@@ -113,13 +113,11 @@ void computeHistogramParallelOMP(int* data, int startIndex, int endIndex, int** 
         fprintf(stderr, "Error: Failed to allocate memory for histogram.\n");
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-
+    // int i;
     // Perform OpenMP parallel processing on the local data array
     #pragma omp parallel for
         for (int i = 0; i < (endIndex - startIndex); i++) // omp runs from 0 to halfSize, cuda from halfSize to dataSize
-        {
-            (*histogram)[data[i]]++;
-        }
+            (*histogram)[data[i]] += 1;
 }
 
 
